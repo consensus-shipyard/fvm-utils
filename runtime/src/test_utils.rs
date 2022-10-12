@@ -67,8 +67,6 @@ lazy_static! {
         map.insert(*MULTISIG_ACTOR_CODE_ID, Type::Multisig);
         map.insert(*REWARD_ACTOR_CODE_ID, Type::Reward);
         map.insert(*VERIFREG_ACTOR_CODE_ID, Type::VerifiedRegistry);
-        map.insert(*SCA_ACTOR_CODE_ID, Type::SCA);
-        map.insert(*SUBNET_ACTOR_CODE_ID, Type::Subnet);
         map
     };
     pub static ref ACTOR_CODES: BTreeMap<Type, Cid> = [
@@ -83,7 +81,6 @@ lazy_static! {
         (Type::Multisig, *MULTISIG_ACTOR_CODE_ID),
         (Type::Reward, *REWARD_ACTOR_CODE_ID),
         (Type::VerifiedRegistry, *VERIFREG_ACTOR_CODE_ID),
-        (Type::SCA, *SCA_ACTOR_CODE_ID),
     ]
     .into_iter()
     .collect();
@@ -136,6 +133,12 @@ pub struct MockRuntime {
     pub policy: Policy,
 
     pub circulating_supply: TokenAmount,
+}
+
+impl MockRuntime {
+    pub fn new(receiver: Address, caller: Address, caller_type: Cid) -> Self {
+        MockRuntime { receiver, caller, caller_type, ..Default::default() }
+    }
 }
 
 #[derive(Default)]
