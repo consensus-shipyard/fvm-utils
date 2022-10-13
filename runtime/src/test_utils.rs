@@ -69,21 +69,6 @@ lazy_static! {
         map.insert(*VERIFREG_ACTOR_CODE_ID, Type::VerifiedRegistry);
         map
     };
-    pub static ref ACTOR_CODES: BTreeMap<Type, Cid> = [
-        (Type::System, *SYSTEM_ACTOR_CODE_ID),
-        (Type::Init, *INIT_ACTOR_CODE_ID),
-        (Type::Cron, *CRON_ACTOR_CODE_ID),
-        (Type::Account, *ACCOUNT_ACTOR_CODE_ID),
-        (Type::Power, *POWER_ACTOR_CODE_ID),
-        (Type::Miner, *MINER_ACTOR_CODE_ID),
-        (Type::Market, *MARKET_ACTOR_CODE_ID),
-        (Type::PaymentChannel, *PAYCH_ACTOR_CODE_ID),
-        (Type::Multisig, *MULTISIG_ACTOR_CODE_ID),
-        (Type::Reward, *REWARD_ACTOR_CODE_ID),
-        (Type::VerifiedRegistry, *VERIFREG_ACTOR_CODE_ID),
-    ]
-    .into_iter()
-    .collect();
     pub static ref CALLER_TYPES_SIGNABLE: Vec<Cid> =
         vec![*ACCOUNT_ACTOR_CODE_ID, *MULTISIG_ACTOR_CODE_ID];
     pub static ref NON_SINGLETON_CODES: BTreeMap<Cid, ()> = {
@@ -103,6 +88,8 @@ pub fn make_builtin(bz: &[u8]) -> Cid {
     Cid::new_v1(IPLD_RAW, OtherMultihash::wrap(0, bz).expect("name too long"))
 }
 
+pub type HashFunc = dyn Fn(&[u8]) -> [u8; 32];
+
 pub struct MockRuntime {
     pub epoch: ChainEpoch,
     pub miner: Address,
@@ -114,7 +101,7 @@ pub struct MockRuntime {
     pub caller: Address,
     pub caller_type: Cid,
     pub value_received: TokenAmount,
-    pub hash_func: Box<dyn Fn(&[u8]) -> [u8; 32]>,
+    pub hash_func: Box<HashFunc>,
     pub network_version: NetworkVersion,
 
     // Actor State

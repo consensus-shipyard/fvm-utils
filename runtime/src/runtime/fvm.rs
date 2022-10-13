@@ -24,7 +24,7 @@ use sha2::{Digest, Sha256};
 
 use crate::runtime::actor_blockstore::ActorBlockstore;
 use crate::runtime::{
-    ActorCode, ConsensusFault, DomainSeparationTag, MessageInfo, Policy, Primitives, RuntimePolicy,
+    ActorCode, ConsensusFault, DomainSeparationTag, MessageInfo, Policy, Primitives,
     Verifier,
 };
 use crate::{actor_error, ActorError, Runtime};
@@ -410,128 +410,6 @@ where
         // exit code ErrIllegalArgument. We should probably move that here, or to the syscall itself.
         fvm::crypto::compute_unsealed_sector_cid(proof_type, pieces)
             .map_err(|e| anyhow!("failed to compute unsealed sector CID; exit code: {}", e))
-    }
-}
-
-#[cfg(not(feature = "fake-proofs"))]
-impl<B> Verifier for FvmRuntime<B>
-where
-    B: Blockstore,
-{
-    fn verify_seal(&self, vi: &SealVerifyInfo) -> Result<(), Error> {
-        match fvm::crypto::verify_seal(vi) {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(Error::msg("invalid seal")),
-            Err(e) => Err(anyhow!("failed to verify seal: {}", e)),
-        }
-    }
-
-    fn verify_post(&self, verify_info: &WindowPoStVerifyInfo) -> Result<(), Error> {
-        match fvm::crypto::verify_post(verify_info) {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(Error::msg("invalid post")),
-            Err(e) => Err(anyhow!("failed to verify post: {}", e)),
-        }
-    }
-
-    fn verify_consensus_fault(
-        &self,
-        h1: &[u8],
-        h2: &[u8],
-        extra: &[u8],
-    ) -> Result<Option<ConsensusFault>, Error> {
-        fvm::crypto::verify_consensus_fault(h1, h2, extra)
-            .map_err(|e| anyhow!("failed to verify fault: {}", e))
-    }
-
-    fn batch_verify_seals(&self, batch: &[SealVerifyInfo]) -> anyhow::Result<Vec<bool>> {
-        fvm::crypto::batch_verify_seals(batch)
-            .map_err(|e| anyhow!("failed to verify batch seals: {}", e))
-    }
-
-    fn verify_aggregate_seals(
-        &self,
-        aggregate: &AggregateSealVerifyProofAndInfos,
-    ) -> Result<(), Error> {
-        match fvm::crypto::verify_aggregate_seals(aggregate) {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(Error::msg("invalid aggregate")),
-            Err(e) => Err(anyhow!("failed to verify aggregate: {}", e)),
-        }
-    }
-
-    fn verify_replica_update(&self, replica: &ReplicaUpdateInfo) -> Result<(), Error> {
-        match fvm::crypto::verify_replica_update(replica) {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(Error::msg("invalid replica")),
-            Err(e) => Err(anyhow!("failed to verify replica: {}", e)),
-        }
-    }
-}
-
-#[cfg(feature = "fake-proofs")]
-impl<B> Verifier for FvmRuntime<B>
-where
-    B: Blockstore,
-{
-    fn verify_seal(&self, _vi: &SealVerifyInfo) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn verify_post(&self, verify_info: &WindowPoStVerifyInfo) -> Result<(), Error> {
-        let mut info = verify_info.clone();
-        if info.proofs.len() != 1 {
-            return Err(Error::msg("expected 1 proof entry"));
-        }
-
-        info.randomness.0[31] &= 0x3f;
-        let mut hasher = Sha256::new();
-
-        hasher.update(info.randomness.0);
-        for si in info.challenged_sectors {
-            hasher.update(RawBytes::serialize(si)?.bytes());
-        }
-
-        let expected_proof = hasher.finalize();
-
-        if *verify_info.proofs[0].proof_bytes.as_slice() == expected_proof[..] {
-            return Ok(());
-        }
-
-        Err(Error::msg("[fake-post-validation] window post was invalid"))
-    }
-
-    fn verify_consensus_fault(
-        &self,
-        _h1: &[u8],
-        _h2: &[u8],
-        _extra: &[u8],
-    ) -> Result<Option<ConsensusFault>, Error> {
-        Ok(None)
-    }
-
-    fn batch_verify_seals(&self, batch: &[SealVerifyInfo]) -> anyhow::Result<Vec<bool>> {
-        Ok(batch.iter().map(|_| true).collect())
-    }
-
-    fn verify_aggregate_seals(
-        &self,
-        _aggregate: &AggregateSealVerifyProofAndInfos,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn verify_replica_update(&self, _replica: &ReplicaUpdateInfo) -> Result<(), Error> {
-        Ok(())
-    }
-}
-
-impl<B> RuntimePolicy for FvmRuntime<B>
-where
-    B: Blockstore,
-{
-    fn policy(&self) -> &Policy {
-        &self.policy
     }
 }
 

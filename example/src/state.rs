@@ -13,7 +13,7 @@ pub struct UserPersistParam {
 }
 
 /// User data storage struct
-#[derive(Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct User {
     pub name: String,
     pub owner: Address,
@@ -39,7 +39,7 @@ impl State {
     pub fn upsert_user<BS: Blockstore>(&mut self, address: &Address, name: String, store: &BS) -> anyhow::Result<()> {
         let key = BytesKey::from(address.to_bytes());
         let mut hamt = self.typed_hamt.load(store)?;
-        hamt.set(key, User { owner: address.clone(), name })?;
+        hamt.set(key, User { owner: *address, name })?;
 
         self.call_count+= 1;
 
