@@ -29,7 +29,7 @@ impl Actor {
             RT: Runtime<BS>,
     {
         let st = State::new(rt.store()).map_err(|e| {
-            e.downcast_default(ExitCode::USR_ILLEGAL_STATE, "Failed to create SCA actor state")
+            e.downcast_default(ExitCode::USR_ILLEGAL_STATE, "Failed to create actor state")
         })?;
         rt.create(&st)?;
         Ok(())
