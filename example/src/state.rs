@@ -40,6 +40,9 @@ impl State {
         let key = BytesKey::from(address.to_bytes());
         let mut hamt = self.typed_hamt.load(store)?;
         hamt.set(key, User { owner: address.clone(), name })?;
+
+        self.call_count+= 1;
+
         Ok(())
     }
 }

@@ -89,7 +89,7 @@ mod test {
     use fvm_shared::MethodNum;
     use fil_actors_runtime::SYSTEM_ACTOR_ADDR;
     use fil_actors_runtime::test_utils::{MockRuntime, SYSTEM_ACTOR_CODE_ID};
-    use crate::{Actor, Method, UserPersistParam};
+    use crate::{Actor, Method, State, UserPersistParam};
 
     #[test]
     fn constructor_works() {
@@ -124,11 +124,14 @@ mod test {
             &RawBytes::serialize(()).unwrap(),
         ).unwrap();
 
+        rt.expect_validate_caller_addr(vec![*SYSTEM_ACTOR_ADDR]);
         rt.call::<Actor>(
             Method::Persist as MethodNum,
             &RawBytes::serialize(UserPersistParam{ name: String::from("sample")}).unwrap(),
         ).unwrap();
 
-        rt.verify()
+        rt.verify();
+        let state: State = rt.get_state();
+        assert_eq!(state.call_count, 1);
     }
 }
