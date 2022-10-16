@@ -1,7 +1,7 @@
 mod state;
 
 use fil_actors_runtime::runtime::{ActorCode, Runtime};
-use fil_actors_runtime::{actor_error, ActorDowncast, ActorError, cbor};
+use fil_actors_runtime::{actor_error, ActorDowncast, ActorError, cbor, INIT_ACTOR_ADDR, runtime};
 use fvm_ipld_blockstore::Blockstore;
 use fvm_ipld_encoding::RawBytes;
 use fvm_shared::error::ExitCode;
@@ -9,6 +9,14 @@ use fvm_shared::{MethodNum, METHOD_CONSTRUCTOR};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use crate::state::{State, UserPersistParam};
+
+#[no_mangle]
+pub fn invoke(param: u32) -> u32 {
+    runtime::fvm::trampoline::<Actor>(param)
+}
+
+// #[cfg(feature = "fil-actor")]
+// fil_actors_runtime::wasm_trampoline!(Actor);
 
 /// SCA actor methods available
 #[derive(FromPrimitive)]
@@ -21,6 +29,7 @@ pub enum Method {
 
 /// Subnet Coordinator Actor
 pub struct Actor;
+
 impl Actor {
     /// Constructor for SCA actor
     fn constructor<BS, RT>(rt: &mut RT) -> Result<(), ActorError>
@@ -28,6 +37,7 @@ impl Actor {
             BS: Blockstore,
             RT: Runtime<BS>,
     {
+        rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
         let st = State::new(rt.store()).map_err(|e| {
             e.downcast_default(ExitCode::USR_ILLEGAL_STATE, "Failed to create SCA actor state")
         })?;
@@ -43,6 +53,8 @@ impl Actor {
     {
         let caller = rt.message().caller();
 
+        rt.validate_immediate_caller_accept_any()?;
+
         rt.transaction(|st: &mut State, rt| {
             st.upsert_user(&caller, param.name, rt.store()).map_err(|e|
                 e.downcast_default(ExitCode::USR_ILLEGAL_STATE, "Failed to create SCA actor state")
@@ -52,7 +64,6 @@ impl Actor {
 
         Ok(())
     }
-
 }
 
 impl ActorCode for Actor {
@@ -84,16 +95,18 @@ mod test {
     use fvm_ipld_encoding::RawBytes;
     use fvm_shared::address::Address;
     use fvm_shared::MethodNum;
-    use fil_actors_runtime::test_utils::{MockRuntime, SYSTEM_ACTOR_CODE_ID};
+    use fil_actors_runtime::{INIT_ACTOR_ADDR};
+    use fil_actors_runtime::test_utils::{MockRuntime};
     use crate::{Actor, Method, State, UserPersistParam};
 
     #[test]
     fn constructor_works() {
         let mut rt = MockRuntime::new(
-            Address::new_id(0),
-            Address::new_id(0),
-            *SYSTEM_ACTOR_CODE_ID
+            Address::new_id(100),
+            *INIT_ACTOR_ADDR,
         );
+
+        rt.expect_validate_caller_addr(vec![*INIT_ACTOR_ADDR]);
 
         rt.call::<Actor>(
             Method::Constructor as MethodNum,
@@ -106,19 +119,26 @@ mod test {
     #[test]
     fn persists_works() {
         let mut rt = MockRuntime::new(
-            Address::new_id(0),
-            Address::new_id(0),
-            *SYSTEM_ACTOR_CODE_ID
+            Address::new_id(1),
+            *INIT_ACTOR_ADDR,
         );
+
+        rt.expect_validate_caller_addr(vec![*INIT_ACTOR_ADDR]);
 
         rt.call::<Actor>(
             Method::Constructor as MethodNum,
             &RawBytes::serialize(()).unwrap(),
         ).unwrap();
 
+        // rt.set_caller(Cid::default(), *SYSTEM_ACTOR_ADDR);
+        // let raw = RawBytes::serialize(UserPersistParam { name: String::from("sample") }).unwrap();
+        // let vec_bytes = Vec::from(raw);
+        // println!("{:?}", base64::encode(vec_bytes));
+
+        rt.expect_validate_caller_any();
         rt.call::<Actor>(
             Method::Persist as MethodNum,
-            &RawBytes::serialize(UserPersistParam{ name: String::from("sample")}).unwrap(),
+            &RawBytes::serialize(UserPersistParam { name: String::from("sample") }).unwrap(),
         ).unwrap();
 
         rt.verify();
