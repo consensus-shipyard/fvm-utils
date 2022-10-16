@@ -39,7 +39,7 @@ impl Actor {
     {
         rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
         let st = State::new(rt.store()).map_err(|e| {
-            e.downcast_default(ExitCode::USR_ILLEGAL_STATE, "Failed to create SCA actor state")
+            e.downcast_default(ExitCode::USR_ILLEGAL_STATE, "Failed to create actor state")
         })?;
         rt.create(&st)?;
         Ok(())
