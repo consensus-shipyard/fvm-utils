@@ -31,7 +31,7 @@ mod actor_blockstore;
 
 /// Runtime is the VM's internal runtime object.
 /// this is everything that is accessible to actors, beyond parameters.
-pub trait Runtime<BS: Blockstore>: Primitives + Verifier {
+pub trait Runtime<BS: Blockstore>: Primitives {
     /// The network protocol version number at the current epoch.
     fn network_version(&self) -> NetworkVersion;
 
