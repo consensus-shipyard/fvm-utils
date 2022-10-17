@@ -5,7 +5,6 @@ use core::fmt;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
-use anyhow::anyhow;
 use cid::multihash::{Code, Multihash as OtherMultihash};
 use cid::Cid;
 use fvm_ipld_blockstore::MemoryBlockstore;
@@ -19,8 +18,6 @@ use fvm_shared::commcid::{FIL_COMMITMENT_SEALED, FIL_COMMITMENT_UNSEALED};
 use fvm_shared::crypto::signature::Signature;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::ExitCode;
-use fvm_shared::piece::PieceInfo;
-use fvm_shared::sector::{RegisteredSealProof};
 use fvm_shared::version::NetworkVersion;
 use fvm_shared::{ActorID, MethodNum};
 
@@ -133,9 +130,6 @@ pub struct Expectations {
     pub expect_create_actor: Option<ExpectCreateActor>,
     pub expect_delete_actor: Option<Address>,
     pub expect_verify_sigs: VecDeque<ExpectedVerifySig>,
-    pub expect_compute_unsealed_sector_cid: VecDeque<ExpectComputeUnsealedSectorCid>,
-    pub expect_get_randomness_tickets: VecDeque<ExpectRandomness>,
-    pub expect_get_randomness_beacon: VecDeque<ExpectRandomness>,
     pub expect_gas_charge: VecDeque<i64>,
 }
 
@@ -178,21 +172,6 @@ impl Expectations {
             self.expect_verify_sigs.is_empty(),
             "expect_verify_sigs: {:?}, not received",
             self.expect_verify_sigs
-        );
-        assert!(
-            self.expect_compute_unsealed_sector_cid.is_empty(),
-            "expect_compute_unsealed_sector_cid: {:?}, not received",
-            self.expect_compute_unsealed_sector_cid
-        );
-        assert!(
-            self.expect_get_randomness_tickets.is_empty(),
-            "expect_get_randomness_tickets {:?}, not received",
-            self.expect_get_randomness_tickets
-        );
-        assert!(
-            self.expect_get_randomness_beacon.is_empty(),
-            "expect_get_randomness_beacon {:?}, not received",
-            self.expect_get_randomness_beacon
         );
         assert!(
             self.expect_gas_charge.is_empty(),
@@ -252,14 +231,6 @@ pub struct ExpectedVerifySig {
     pub signer: Address,
     pub plaintext: Vec<u8>,
     pub result: Result<(), anyhow::Error>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ExpectComputeUnsealedSectorCid {
-    reg: RegisteredSealProof,
-    pieces: Vec<PieceInfo>,
-    cid: Cid,
-    exit_code: ExitCode,
 }
 
 #[derive(Clone, Debug)]
@@ -371,8 +342,8 @@ impl MockRuntime {
     /// Method to use when we need to call something in the test that requires interacting
     /// with the runtime in a read-only fashion, but it's not an actor invocation.
     pub fn call_fn<F, T>(&mut self, f: F) -> anyhow::Result<T>
-        where
-            F: FnOnce(&mut Self) -> anyhow::Result<T>,
+    where
+        F: FnOnce(&mut Self) -> anyhow::Result<T>,
     {
         self.in_call = true;
         let res = f(self);
@@ -403,26 +374,6 @@ impl MockRuntime {
         self.expectations
             .borrow_mut()
             .expect_verify_sigs
-            .push_back(exp);
-    }
-
-    #[allow(dead_code)]
-    pub fn expect_compute_unsealed_sector_cid(
-        &self,
-        reg: RegisteredSealProof,
-        pieces: Vec<PieceInfo>,
-        cid: Cid,
-        exit_code: ExitCode,
-    ) {
-        let exp = ExpectComputeUnsealedSectorCid {
-            reg,
-            pieces,
-            cid,
-            exit_code,
-        };
-        self.expectations
-            .borrow_mut()
-            .expect_compute_unsealed_sector_cid
             .push_back(exp);
     }
 
@@ -491,23 +442,6 @@ impl MockRuntime {
         self.epoch = epoch;
     }
 
-    pub fn expect_get_randomness_from_tickets(&mut self) {
-        let a = ExpectRandomness {};
-        self.expectations
-            .borrow_mut()
-            .expect_get_randomness_tickets
-            .push_back(a);
-    }
-
-    #[allow(dead_code)]
-    pub fn expect_get_randomness_from_beacon(&mut self) {
-        let a = ExpectRandomness {};
-        self.expectations
-            .borrow_mut()
-            .expect_get_randomness_beacon
-            .push_back(a);
-    }
-
     #[allow(dead_code)]
     pub fn expect_gas_charge(&mut self, value: i64) {
         self.expectations
@@ -572,8 +506,8 @@ impl Runtime<MemoryBlockstore> for MockRuntime {
     }
 
     fn validate_immediate_caller_is<'a, I>(&mut self, addresses: I) -> Result<(), ActorError>
-        where
-            I: IntoIterator<Item=&'a Address>,
+    where
+        I: IntoIterator<Item = &'a Address>,
     {
         self.require_in_call();
 
@@ -605,8 +539,8 @@ impl Runtime<MemoryBlockstore> for MockRuntime {
         ))
     }
     fn validate_immediate_caller_type<'a, I>(&mut self, types: I) -> Result<(), ActorError>
-        where
-            I: IntoIterator<Item=&'a Type>,
+    where
+        I: IntoIterator<Item = &'a Type>,
     {
         self.require_in_call();
         assert!(
@@ -682,9 +616,9 @@ impl Runtime<MemoryBlockstore> for MockRuntime {
     }
 
     fn transaction<C, RT, F>(&mut self, f: F) -> Result<RT, ActorError>
-        where
-            C: Cbor,
-            F: FnOnce(&mut C, &mut Self) -> Result<RT, ActorError>,
+    where
+        C: Cbor,
+        F: FnOnce(&mut C, &mut Self) -> Result<RT, ActorError>,
     {
         if self.in_transaction {
             return Err(actor_error!(assertion_failed; "nested transaction"));
@@ -903,35 +837,6 @@ impl Primitives for MockRuntime {
 
     fn hash_blake2b(&self, data: &[u8]) -> [u8; 32] {
         (*self.hash_func)(data)
-    }
-    fn compute_unsealed_sector_cid(
-        &self,
-        reg: RegisteredSealProof,
-        pieces: &[PieceInfo],
-    ) -> anyhow::Result<Cid> {
-        let exp = self
-            .expectations
-            .borrow_mut()
-            .expect_compute_unsealed_sector_cid
-            .pop_front()
-            .expect("Unexpected syscall to ComputeUnsealedSectorCID");
-
-        assert_eq!(
-            exp.reg, reg,
-            "Unexpected compute_unsealed_sector_cid : reg mismatch"
-        );
-        assert!(
-            exp.pieces[..].eq(pieces),
-            "Unexpected compute_unsealed_sector_cid : pieces mismatch"
-        );
-
-        if exp.exit_code != ExitCode::OK {
-            return Err(anyhow!(ActorError::unchecked(
-                exp.exit_code,
-                "Expected Failure".to_string(),
-            )));
-        }
-        Ok(exp.cid)
     }
 }
 

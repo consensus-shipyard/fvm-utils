@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use cid::multihash::{Code, MultihashDigest};
 use cid::Cid;
 use fvm_ipld_blockstore::Blockstore;
@@ -11,8 +11,6 @@ use fvm_shared::clock::ChainEpoch;
 use fvm_shared::crypto::signature::Signature;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::{ErrorNumber, ExitCode};
-use fvm_shared::piece::PieceInfo;
-use fvm_shared::sector::RegisteredSealProof;
 use fvm_shared::version::NetworkVersion;
 use fvm_shared::{ActorID, MethodNum};
 #[cfg(feature = "fake-proofs")]
@@ -320,17 +318,6 @@ where
 {
     fn hash_blake2b(&self, data: &[u8]) -> [u8; 32] {
         fvm::crypto::hash_blake2b(data)
-    }
-
-    fn compute_unsealed_sector_cid(
-        &self,
-        proof_type: RegisteredSealProof,
-        pieces: &[PieceInfo],
-    ) -> Result<Cid, Error> {
-        // The only actor that invokes this (market actor) is generating the
-        // exit code ErrIllegalArgument. We should probably move that here, or to the syscall itself.
-        fvm::crypto::compute_unsealed_sector_cid(proof_type, pieces)
-            .map_err(|e| anyhow!("failed to compute unsealed sector CID; exit code: {}", e))
     }
 
     fn verify_signature(
