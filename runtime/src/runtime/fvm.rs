@@ -12,7 +12,6 @@ use fvm_shared::crypto::signature::Signature;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::{ErrorNumber, ExitCode};
 use fvm_shared::piece::PieceInfo;
-use fvm_shared::randomness::Randomness;
 use fvm_shared::sector::{
     AggregateSealVerifyProofAndInfos, RegisteredSealProof, ReplicaUpdateInfo, SealVerifyInfo,
     WindowPoStVerifyInfo,
@@ -24,8 +23,7 @@ use sha2::{Digest, Sha256};
 
 use crate::runtime::actor_blockstore::ActorBlockstore;
 use crate::runtime::{
-    ActorCode, ConsensusFault, DomainSeparationTag, MessageInfo, Policy, Primitives, RuntimePolicy,
-    Verifier,
+    ActorCode, ConsensusFault, MessageInfo, Primitives, Verifier,
 };
 use crate::{actor_error, ActorError, Runtime};
 
@@ -45,8 +43,6 @@ pub struct FvmRuntime<B = ActorBlockstore> {
     in_transaction: bool,
     /// Indicates that the caller has been validated.
     caller_validated: bool,
-    /// The runtime policy
-    policy: Policy,
 }
 
 impl Default for FvmRuntime {
@@ -55,7 +51,6 @@ impl Default for FvmRuntime {
             blockstore: ActorBlockstore,
             in_transaction: false,
             caller_validated: false,
-            policy: Policy::default(),
         }
     }
 }
@@ -69,11 +64,6 @@ impl<B> FvmRuntime<B> {
             ));
         }
         Ok(())
-    }
-
-    #[allow(dead_code)]
-    fn policy_mut(&mut self) -> &mut Policy {
-        &mut self.policy
     }
 }
 
@@ -163,67 +153,6 @@ where
 
     fn get_actor_code_cid(&self, addr: &Address) -> Option<Cid> {
         fvm::actor::get_actor_code_cid(addr)
-    }
-
-    fn resolve_builtin_actor_type(&self, code_id: &Cid) -> Option<Type> {
-        fvm::actor::get_builtin_actor_type(code_id)
-    }
-
-    fn get_code_cid_for_type(&self, typ: Type) -> Cid {
-        fvm::actor::get_code_cid_for_type(typ)
-    }
-
-    fn get_randomness_from_tickets(
-        &self,
-        personalization: DomainSeparationTag,
-        rand_epoch: ChainEpoch,
-        entropy: &[u8],
-    ) -> Result<Randomness, ActorError> {
-        // Note: For Go actors, Lotus treated all failures to get randomness as "fatal" errors,
-        // which it then translated into exit code SysErrReserved1 (= 4, and now known as
-        // SYS_ILLEGAL_INSTRUCTION), rather than just aborting with an appropriate exit code.
-        //
-        // We can replicate that here prior to network v16, but from nv16 onwards the FVM will
-        // override the attempt to use a system exit code, and produce
-        // SYS_ILLEGAL_EXIT_CODE (9) instead.
-        //
-        // Since that behaviour changes, we may as well abort with a more appropriate exit code
-        // explicitly.
-        fvm::rand::get_chain_randomness(personalization as i64, rand_epoch, entropy).map_err(|e| {
-            if self.network_version() < NetworkVersion::V16 {
-                ActorError::unchecked(ExitCode::SYS_ILLEGAL_INSTRUCTION,
-                    "failed to get chain randomness".into())
-            } else {
-                match e {
-                    ErrorNumber::LimitExceeded => {
-                        actor_error!(illegal_argument; "randomness lookback exceeded: {}", e)
-                    }
-                    e => actor_error!(assertion_failed; "get chain randomness failed with an unexpected error: {}", e),
-                }
-            }
-        })
-    }
-
-    fn get_randomness_from_beacon(
-        &self,
-        personalization: DomainSeparationTag,
-        rand_epoch: ChainEpoch,
-        entropy: &[u8],
-    ) -> Result<Randomness, ActorError> {
-        // See note on exit codes in get_randomness_from_tickets.
-        fvm::rand::get_beacon_randomness(personalization as i64, rand_epoch, entropy).map_err(|e| {
-            if self.network_version() < NetworkVersion::V16 {
-                ActorError::unchecked(ExitCode::SYS_ILLEGAL_INSTRUCTION,
-                    "failed to get chain randomness".into())
-            } else {
-                match e {
-                    ErrorNumber::LimitExceeded => {
-                        actor_error!(illegal_argument; "randomness lookback exceeded: {}", e)
-                    }
-                    e => actor_error!(assertion_failed; "get chain randomness failed with an unexpected error: {}", e),
-                }
-            }
-        })
     }
 
     fn create<C: Cbor>(&mut self, obj: &C) -> Result<(), ActorError> {
@@ -369,6 +298,14 @@ where
         Ok(fvm::sself::self_destruct(beneficiary)?)
     }
 
+    fn resolve_builtin_actor_type(&self, code_id: &Cid) -> Option<Type> {
+        fvm::actor::get_builtin_actor_type(code_id)
+    }
+
+    fn get_code_cid_for_type(&self, typ: Type) -> Cid {
+        fvm::actor::get_code_cid_for_type(typ)
+    }
+
     fn total_fil_circ_supply(&self) -> TokenAmount {
         fvm::network::total_fil_circ_supply()
     }
@@ -386,18 +323,6 @@ impl<B> Primitives for FvmRuntime<B>
 where
     B: Blockstore,
 {
-    fn verify_signature(
-        &self,
-        signature: &Signature,
-        signer: &Address,
-        plaintext: &[u8],
-    ) -> Result<(), Error> {
-        match fvm::crypto::verify_signature(signature, signer, plaintext) {
-            Ok(true) => Ok(()),
-            Ok(false) | Err(_) => Err(Error::msg("invalid signature")),
-        }
-    }
-
     fn hash_blake2b(&self, data: &[u8]) -> [u8; 32] {
         fvm::crypto::hash_blake2b(data)
     }
@@ -411,6 +336,18 @@ where
         // exit code ErrIllegalArgument. We should probably move that here, or to the syscall itself.
         fvm::crypto::compute_unsealed_sector_cid(proof_type, pieces)
             .map_err(|e| anyhow!("failed to compute unsealed sector CID; exit code: {}", e))
+    }
+
+    fn verify_signature(
+        &self,
+        signature: &Signature,
+        signer: &Address,
+        plaintext: &[u8],
+    ) -> Result<(), Error> {
+        match fvm::crypto::verify_signature(signature, signer, plaintext) {
+            Ok(true) => Ok(()),
+            Ok(false) | Err(_) => Err(Error::msg("invalid signature")),
+        }
     }
 }
 
@@ -524,15 +461,6 @@ where
 
     fn verify_replica_update(&self, _replica: &ReplicaUpdateInfo) -> Result<(), Error> {
         Ok(())
-    }
-}
-
-impl<B> RuntimePolicy for FvmRuntime<B>
-where
-    B: Blockstore,
-{
-    fn policy(&self) -> &Policy {
-        &self.policy
     }
 }
 

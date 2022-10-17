@@ -21,7 +21,6 @@ use fvm_shared::crypto::signature::Signature;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::ExitCode;
 use fvm_shared::piece::PieceInfo;
-use fvm_shared::randomness::Randomness;
 use fvm_shared::sector::{
     AggregateSealVerifyInfo, AggregateSealVerifyProofAndInfos, RegisteredSealProof,
     ReplicaUpdateInfo, SealVerifyInfo, WindowPoStVerifyInfo,
@@ -35,8 +34,7 @@ use multihash::MultihashDigest;
 use rand::prelude::*;
 
 use crate::runtime::{
-    ActorCode, DomainSeparationTag, MessageInfo, Policy, Primitives, Runtime, RuntimePolicy,
-    Verifier,
+    ActorCode, MessageInfo, Primitives, Runtime, Verifier
 };
 use crate::{actor_error, ActorError};
 
@@ -71,21 +69,6 @@ lazy_static! {
         map.insert(*VERIFREG_ACTOR_CODE_ID, Type::VerifiedRegistry);
         map
     };
-    pub static ref ACTOR_CODES: BTreeMap<Type, Cid> = [
-        (Type::System, *SYSTEM_ACTOR_CODE_ID),
-        (Type::Init, *INIT_ACTOR_CODE_ID),
-        (Type::Cron, *CRON_ACTOR_CODE_ID),
-        (Type::Account, *ACCOUNT_ACTOR_CODE_ID),
-        (Type::Power, *POWER_ACTOR_CODE_ID),
-        (Type::Miner, *MINER_ACTOR_CODE_ID),
-        (Type::Market, *MARKET_ACTOR_CODE_ID),
-        (Type::PaymentChannel, *PAYCH_ACTOR_CODE_ID),
-        (Type::Multisig, *MULTISIG_ACTOR_CODE_ID),
-        (Type::Reward, *REWARD_ACTOR_CODE_ID),
-        (Type::VerifiedRegistry, *VERIFREG_ACTOR_CODE_ID),
-    ]
-    .into_iter()
-    .collect();
     pub static ref CALLER_TYPES_SIGNABLE: Vec<Cid> =
         vec![*ACCOUNT_ACTOR_CODE_ID, *MULTISIG_ACTOR_CODE_ID];
     pub static ref NON_SINGLETON_CODES: BTreeMap<Cid, ()> = {
@@ -133,9 +116,6 @@ pub struct MockRuntime {
 
     // Expectations
     pub expectations: RefCell<Expectations>,
-
-    // policy
-    pub policy: Policy,
 
     pub circulating_supply: TokenAmount,
 }
@@ -285,7 +265,6 @@ impl Default for MockRuntime {
             store: Default::default(),
             in_transaction: Default::default(),
             expectations: Default::default(),
-            policy: Default::default(),
             circulating_supply: Default::default(),
         }
     }
@@ -349,10 +328,6 @@ pub struct ExpectComputeUnsealedSectorCid {
 
 #[derive(Clone, Debug)]
 pub struct ExpectRandomness {
-    tag: DomainSeparationTag,
-    epoch: ChainEpoch,
-    entropy: Vec<u8>,
-    out: Randomness,
 }
 
 #[derive(Debug)]
@@ -633,17 +608,9 @@ impl MockRuntime {
     }
 
     pub fn expect_get_randomness_from_tickets(
-        &mut self,
-        tag: DomainSeparationTag,
-        epoch: ChainEpoch,
-        entropy: Vec<u8>,
-        out: Randomness,
+        &mut self
     ) {
         let a = ExpectRandomness {
-            tag,
-            epoch,
-            entropy,
-            out,
         };
         self.expectations
             .borrow_mut()
@@ -654,17 +621,8 @@ impl MockRuntime {
     #[allow(dead_code)]
     pub fn expect_get_randomness_from_beacon(
         &mut self,
-        tag: DomainSeparationTag,
-        epoch: ChainEpoch,
-        entropy: Vec<u8>,
-        out: Randomness,
     ) {
-        let a = ExpectRandomness {
-            tag,
-            epoch,
-            entropy,
-            out,
-        };
+        let a = ExpectRandomness {};
         self.expectations
             .borrow_mut()
             .expect_get_randomness_beacon
@@ -861,72 +819,6 @@ impl Runtime<MemoryBlockstore> for MockRuntime {
     fn get_actor_code_cid(&self, addr: &Address) -> Option<Cid> {
         self.require_in_call();
         self.actor_code_cids.get(addr).cloned()
-    }
-
-    fn get_randomness_from_tickets(
-        &self,
-        tag: DomainSeparationTag,
-        epoch: ChainEpoch,
-        entropy: &[u8],
-    ) -> Result<Randomness, ActorError> {
-        let expected = self
-            .expectations
-            .borrow_mut()
-            .expect_get_randomness_tickets
-            .pop_front()
-            .expect("unexpected call to get_randomness_from_tickets");
-
-        assert!(epoch <= self.epoch, "attempt to get randomness from future");
-        assert_eq!(
-            expected.tag, tag,
-            "unexpected domain separation tag, expected: {:?}, actual: {:?}",
-            expected.tag, tag
-        );
-        assert_eq!(
-            expected.epoch, epoch,
-            "unexpected epoch, expected: {:?}, actual: {:?}",
-            expected.epoch, epoch
-        );
-        assert_eq!(
-            expected.entropy, *entropy,
-            "unexpected entroy, expected {:?}, actual: {:?}",
-            expected.entropy, entropy
-        );
-
-        Ok(expected.out)
-    }
-
-    fn get_randomness_from_beacon(
-        &self,
-        tag: DomainSeparationTag,
-        epoch: ChainEpoch,
-        entropy: &[u8],
-    ) -> Result<Randomness, ActorError> {
-        let expected = self
-            .expectations
-            .borrow_mut()
-            .expect_get_randomness_beacon
-            .pop_front()
-            .expect("unexpected call to get_randomness_from_beacon");
-
-        assert!(epoch <= self.epoch, "attempt to get randomness from future");
-        assert_eq!(
-            expected.tag, tag,
-            "unexpected domain separation tag, expected: {:?}, actual: {:?}",
-            expected.tag, tag
-        );
-        assert_eq!(
-            expected.epoch, epoch,
-            "unexpected epoch, expected: {:?}, actual: {:?}",
-            expected.epoch, epoch
-        );
-        assert_eq!(
-            expected.entropy, *entropy,
-            "unexpected entroy, expected {:?}, actual: {:?}",
-            expected.entropy, entropy
-        );
-
-        Ok(expected.out)
     }
 
     fn create<C: Cbor>(&mut self, obj: &C) -> Result<(), ActorError> {
@@ -1332,12 +1224,6 @@ impl Verifier for MockRuntime {
             "mismatched new unsealed CID"
         );
         exp.result
-    }
-}
-
-impl RuntimePolicy for MockRuntime {
-    fn policy(&self) -> &Policy {
-        &self.policy
     }
 }
 

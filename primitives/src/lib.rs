@@ -5,6 +5,8 @@ use cid::{multihash::Code, Cid};
 mod amt;
 mod hamt;
 mod link;
+mod address;
+
 pub use amt::TAmt;
 pub use hamt::THamt;
 pub use link::TLink;
