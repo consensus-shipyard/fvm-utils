@@ -1,5 +1,5 @@
 # fvm-utils
-This repo contains a series of crates that serve as utils for fvm develop and testing.
+This repo contains a series of crates that serve as utils for fvm development and testing.
 Here are some simple breakdowns:
 - runtime: Contains the runtime wrapper for communicating with `fvm`. It provides some 
 handy utility functions such as `transaction` and `verification`.
