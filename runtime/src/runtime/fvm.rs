@@ -22,9 +22,7 @@ use fvm_shared::{ActorID, MethodNum};
 use sha2::{Digest, Sha256};
 
 use crate::runtime::actor_blockstore::ActorBlockstore;
-use crate::runtime::{
-    ActorCode, ConsensusFault, MessageInfo, Primitives, Verifier,
-};
+use crate::runtime::{ActorCode, ConsensusFault, MessageInfo, Primitives, Verifier};
 use crate::{actor_error, ActorError, Runtime};
 
 lazy_static! {

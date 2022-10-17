@@ -70,15 +70,18 @@ impl<A: RawAddress> TryFrom<Address> for TAddress<A> {
         if !A::is_compatible(value) {
             return Err(fvm_shared::address::Error::InvalidPayload);
         }
-        Ok(Self { addr: value, _phantom: PhantomData })
+        Ok(Self {
+            addr: value,
+            _phantom: PhantomData,
+        })
     }
 }
 
 /// Serializes exactly as its underlying `Address`.
 impl<T> serde::Serialize for TAddress<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
+    where
+        S: serde::Serializer,
     {
         self.addr.serialize(serializer)
     }
@@ -86,13 +89,13 @@ impl<T> serde::Serialize for TAddress<T> {
 
 /// Deserializes exactly as its underlying `Address` but might be rejected if it's not the expected type.
 impl<'d, T> serde::Deserialize<'d> for TAddress<T>
-    where
-        Self: TryFrom<Address>,
-        <Self as TryFrom<Address>>::Error: Display,
+where
+    Self: TryFrom<Address>,
+    <Self as TryFrom<Address>>::Error: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'d>,
+    where
+        D: serde::Deserializer<'d>,
     {
         let raw = Address::deserialize(deserializer)?;
         match Self::try_from(raw) {
@@ -103,9 +106,9 @@ impl<'d, T> serde::Deserialize<'d> for TAddress<T>
 }
 
 impl<T> Cbor for TAddress<T>
-    where
-        Self: TryFrom<Address>,
-        <Self as TryFrom<Address>>::Error: Display,
+where
+    Self: TryFrom<Address>,
+    <Self as TryFrom<Address>>::Error: Display,
 {
 }
 
@@ -118,8 +121,8 @@ pub struct TAddressKey<T>(pub TAddress<T>);
 /// Serializes to the `String` format of the underlying `Address`.
 impl<T> serde::Serialize for TAddressKey<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
+    where
+        S: serde::Serializer,
     {
         self.0.addr.to_string().serialize(serializer)
     }
@@ -127,13 +130,13 @@ impl<T> serde::Serialize for TAddressKey<T> {
 
 /// Deserializes from `String` format. May be rejected if the address is not the expected type.
 impl<'d, T> serde::Deserialize<'d> for TAddressKey<T>
-    where
-        TAddress<T>: TryFrom<Address>,
-        <TAddress<T> as TryFrom<Address>>::Error: Display,
+where
+    TAddress<T>: TryFrom<Address>,
+    <TAddress<T> as TryFrom<Address>>::Error: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'d>,
+    where
+        D: serde::Deserializer<'d>,
     {
         let str = String::deserialize(deserializer)?;
         let raw = Address::from_str(&str)
@@ -145,8 +148,8 @@ impl<'d, T> serde::Deserialize<'d> for TAddressKey<T>
 }
 
 impl<T> Cbor for TAddressKey<T>
-    where
-        TAddress<T>: TryFrom<Address>,
-        <TAddress<T> as TryFrom<Address>>::Error: Display,
+where
+    TAddress<T>: TryFrom<Address>,
+    <TAddress<T> as TryFrom<Address>>::Error: Display,
 {
 }

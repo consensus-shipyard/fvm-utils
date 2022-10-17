@@ -33,9 +33,7 @@ use multihash::MultihashDigest;
 
 use rand::prelude::*;
 
-use crate::runtime::{
-    ActorCode, MessageInfo, Primitives, Runtime, Verifier
-};
+use crate::runtime::{ActorCode, MessageInfo, Primitives, Runtime, Verifier};
 use crate::{actor_error, ActorError};
 
 type Func = dyn Fn(&[u8]) -> [u8; 32];
@@ -327,8 +325,7 @@ pub struct ExpectComputeUnsealedSectorCid {
 }
 
 #[derive(Clone, Debug)]
-pub struct ExpectRandomness {
-}
+pub struct ExpectRandomness {}
 
 #[derive(Debug)]
 pub struct ExpectBatchVerifySeals {
@@ -607,11 +604,8 @@ impl MockRuntime {
         self.epoch = epoch;
     }
 
-    pub fn expect_get_randomness_from_tickets(
-        &mut self
-    ) {
-        let a = ExpectRandomness {
-        };
+    pub fn expect_get_randomness_from_tickets(&mut self) {
+        let a = ExpectRandomness {};
         self.expectations
             .borrow_mut()
             .expect_get_randomness_tickets
@@ -619,9 +613,7 @@ impl MockRuntime {
     }
 
     #[allow(dead_code)]
-    pub fn expect_get_randomness_from_beacon(
-        &mut self,
-    ) {
+    pub fn expect_get_randomness_from_beacon(&mut self) {
         let a = ExpectRandomness {};
         self.expectations
             .borrow_mut()
