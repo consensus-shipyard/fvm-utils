@@ -14,13 +14,6 @@ pub struct TAddress<T> {
 }
 
 impl<T> TAddress<T> {
-    pub fn new(addr: Address) -> Self {
-        Self {
-            addr,
-            _phantom: Default::default(),
-        }
-    }
-
     #[allow(dead_code)]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.addr.to_bytes()
