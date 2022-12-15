@@ -21,15 +21,16 @@ fn impl_method_signature(ast: &syn::DeriveInput) -> TokenStream {
         // TODO: we should explore converting `field.ty` to bytes then we can generate
         // TODO: the hash offline. Anyone has any tips?
         match fields {
-            Fields::Named(ref fields) => {
-                fields.named.iter().map(|field| field.ty.clone()).collect::<Vec<_>>()
-            }
+            Fields::Named(ref fields) => fields
+                .named
+                .iter()
+                .map(|field| field.ty.clone())
+                .collect::<Vec<_>>(),
             _ => {
                 panic!("The StructSignature derive macro can only be applied to named fields.");
             }
         }
-    }
-    else {
+    } else {
         panic!("The StructSignature derive macro can only be applied to structs.");
     };
 
