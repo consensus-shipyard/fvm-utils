@@ -7,10 +7,14 @@ edition = "2021"
 [dependencies]
 fil_actors_runtime = { path = "./runtime", features = ["test_utils", "fil-actor"] }
 primitives = { path = "primitives" }
+interface-trait = { version = "0.1.0", path = "interface-trait" }
+interface-derive = { version = "0.1.0", path = "interface-derive" }
 
 [workspace]
 members = [
     "runtime",
     "primitives",
     "example",
+    "interface-derive",
+    "interface-trait",
 ]
