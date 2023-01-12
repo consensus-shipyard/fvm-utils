@@ -383,6 +383,14 @@ impl MockRuntime {
     }
 
     #[allow(dead_code)]
+    pub fn expect_validate_caller_not_type(&mut self, types: Vec<Cid>) {
+        // we add type as an expectation to ensure that we did the type check
+        // and then perform the explicit "not_type" check in the validate of
+        // the MockRuntime
+        self.expect_validate_caller_type(types)
+    }
+
+    #[allow(dead_code)]
     pub fn expect_validate_caller_any(&self) {
         self.expectations.borrow_mut().expect_validate_caller_any = true;
     }
