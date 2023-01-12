@@ -151,10 +151,8 @@ where
         };
 
         match self.resolve_builtin_actor_type(&caller_cid) {
-            Some(typ) if types.into_iter().any(|t| *t == typ) => {
-                Err(actor_error!(forbidden;
-                                 "caller cid type {} is one of the not supported", caller_cid))
-            },
+            Some(typ) if types.into_iter().any(|t| *t == typ) => Err(actor_error!(forbidden;
+                                 "caller cid type {} is one of the not supported", caller_cid)),
             _ => {
                 self.caller_validated = true;
                 Ok(())
