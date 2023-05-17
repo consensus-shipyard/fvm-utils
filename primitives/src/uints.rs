@@ -141,14 +141,14 @@ impl U256 {
         }
     }
 
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         let mut buf = [0u8; 32];
         self.to_big_endian(&mut buf);
         buf
     }
 
     /// Returns the low 64 bits, saturating the value to u64 max if it is larger
-    pub fn to_u64_saturating(&self) -> u64 {
+    pub fn to_u64_saturating(self) -> u64 {
         if self.bits() > 64 {
             u64::MAX
         } else {
