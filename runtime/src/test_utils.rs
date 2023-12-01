@@ -147,7 +147,7 @@ pub struct Expectations {
     pub expect_validate_caller_not_type: Option<Vec<Cid>>,
     pub expect_sends: VecDeque<ExpectedMessage>,
     pub expect_create_actor: Option<ExpectCreateActor>,
-    pub expect_delete_actor: Option<Address>,
+    pub expect_delete_actor: Option<bool>,
     pub expect_verify_sigs: VecDeque<ExpectedVerifySig>,
     pub expect_gas_charge: VecDeque<i64>,
 }
@@ -415,8 +415,8 @@ impl<BS: Blockstore> MockRuntime<BS> {
     }
 
     #[allow(dead_code)]
-    pub fn expect_delete_actor(&mut self, beneficiary: Address) {
-        self.expectations.borrow_mut().expect_delete_actor = Some(beneficiary);
+    pub fn expect_delete_actor(&mut self, burn_unspent: bool) {
+        self.expectations.borrow_mut().expect_delete_actor = Some(burn_unspent);
     }
 
     #[allow(dead_code)]
@@ -788,20 +788,20 @@ impl<BS: Blockstore> Runtime for MockRuntime<BS> {
         Ok(())
     }
 
-    fn delete_actor(&mut self, addr: &Address) -> Result<(), ActorError> {
+    fn delete_actor(&mut self, burn_unspent: bool) -> Result<(), ActorError> {
         self.require_in_call();
         if self.in_transaction {
             return Err(actor_error!(assertion_failed; "side-effect within transaction"));
         }
         let exp_act = self.expectations.borrow_mut().expect_delete_actor.take();
         if exp_act.is_none() {
-            panic!("unexpected call to delete actor: {addr}");
+            panic!("unexpected call to delete actor: {burn_unspent}");
         }
-        if exp_act.as_ref().unwrap() != addr {
+        if exp_act.unwrap() != burn_unspent {
             panic!(
                 "attempt to delete wrong actor. Expected: {}, got: {}",
                 exp_act.unwrap(),
-                addr
+                burn_unspent
             );
         }
         Ok(())

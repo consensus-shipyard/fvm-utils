@@ -11,11 +11,15 @@ version = "0.0.1"
 base64 = "0.13.0"
 byteorder = "1.4.3"
 castaway = "0.2.2"
-cid = {version = "0.8.3", default-features = false, features = ["serde-codec"]}
-frc42_dispatch = "3.0.0"
-fvm_ipld_amt = {version = "0.4.2", features = ["go-interop"]}
-fvm_ipld_hamt = "0.5.1"
-fvm_shared = {version = "=3.2.0", default-features = false}
+cid = {version = "0.10.1", default-features = false, features = ["serde-codec"]}
+frc42_dispatch = "5.0.0"
+#fvm_ipld_amt = {version = "0.4.2", features = ["go-interop"]}
+#fvm_ipld_hamt = "0.5.1"
+#fvm_shared = {version = "=3.2.0", default-features = false}
+fvm_ipld_amt = { path = "../../ref-fvm/ipld/amt"}
+fvm_ipld_hamt = { path = "../../ref-fvm/ipld/hamt" }
+fvm_shared = { path = "../../ref-fvm/shared", features = ["crypto"] }
+
 indexmap = {version = "1.8.0", features = ["serde-1"]}
 integer-encoding = {version = "3.0.3", default-features = false}
 lazy_static = "1.4.0"
@@ -28,13 +32,17 @@ unsigned-varint = "0.7.1"
 # enforce wasm compat
 anyhow = "1.0.56"
 blake2b_simd = "1.0"
-fvm_ipld_blockstore = "0.1.1"
-fvm_ipld_encoding = "0.3.3"
-fvm_sdk = {version = "=3.2.0", optional = true}
+#fvm_ipld_blockstore = "0.1.1"
+#fvm_ipld_encoding = "0.3.3"
+#fvm_sdk = {version = "=3.2.0", optional = true}
+fvm_ipld_blockstore = { path = "../../ref-fvm/ipld/blockstore" }
+fvm_ipld_encoding = { path = "../../ref-fvm/ipld/encoding" }
+fvm_sdk = { path = "../../ref-fvm/sdk", optional = true }
+
 getrandom = {version = "0.2.3", features = ["js"]}
 hex = {version = "0.4.3", optional = true}
 itertools = "0.10"
-multihash = {version = "0.16.1", default-features = false}
+multihash = {version = "0.18.1", default-features = false}
 paste = "1.0.9"
 rand = "0.7.3"
 regex = "1"
