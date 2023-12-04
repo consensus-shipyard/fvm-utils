@@ -10,12 +10,11 @@ version = "0.1.0"
 #fvm_ipld_encoding = "0.3.3"
 #fvm_ipld_hamt = "0.5.1"
 #fvm_shared = {version = "=3.2.0", default-features = false}
-
 fil_actors_runtime = {path = "../runtime", features = ["fil-actor"]}
-fvm_ipld_blockstore = { path = "../../ref-fvm/ipld/blockstore" }
-fvm_ipld_encoding = { path = "../../ref-fvm/ipld/encoding" }
-fvm_ipld_hamt = { path = "../../ref-fvm/ipld/hamt" }
-fvm_shared = { path = "../../ref-fvm/shared", features = ["crypto"] }
+fvm_ipld_blockstore = { git = "https://github.com/filecoin-project/ref-fvm", branch = "upgrade-fvm" }
+fvm_ipld_encoding = { git = "https://github.com/filecoin-project/ref-fvm", branch = "upgrade-fvm" }
+fvm_ipld_hamt = { git = "https://github.com/filecoin-project/ref-fvm", branch = "upgrade-fvm" }
+fvm_shared = { git = "https://github.com/filecoin-project/ref-fvm", branch = "upgrade-fvm", features = ["crypto"] }
 
 anyhow = "1.0.56"
 cid = {version = "0.10.1", default-features = false, features = ["serde-codec"]}
