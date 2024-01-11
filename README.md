@@ -1,3 +1,6 @@
+> [!IMPORTANT]  
+> This repo has been archived and its code merged into https://github.com/consensus-shipyard/ipc
+
 # fvm-utils
 This repo contains a series of crates that serve as utils for fvm development and testing.
 Here are some simple breakdowns:
